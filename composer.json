@@ -1,5 +1,5 @@
 {
-    "name": "laravel-cus-config",
+    "name": "h6play/laravel-cus-config",
     "description": "Laravel-cus-config extension for laravel",
     "type": "composer-plugin",
     "keywords": ["Laravel-cus-config", "extension", "config"],
