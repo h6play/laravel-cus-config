@@ -26,7 +26,7 @@ class CusConfig
      */
     protected $cacheSer = null;
 
-    protected $id       = 0;         // ID
+    protected $mch       = 0;         // ID
     protected $provider = "default"; // 配置类型
     protected $path     = "config";  // 配置缓存目录
     protected $fullPath = "";        // 配置缓全路径
@@ -34,10 +34,10 @@ class CusConfig
     protected $file     = "";        // 文件名
     protected $tables   = [];        // 表名
 
-    public function __construct($provider = "default", $id = 0)
+    public function __construct($provider = "default", $mch = 0)
     {
         $this->provider = $provider;
-        $this->id = $id;
+        $this->mch = $mch;
 
         // 设置缓存驱动
         $this->cacheSer = Cache::store(config("config.cache.dirve", "file"));
@@ -47,7 +47,7 @@ class CusConfig
 
         // 获取本地缓存文件路径
         $path = config("config.cache.local.store_path", "app/framework/config");
-        $this->path = "{$path}/{$this->provider}/{$this->id}/";
+        $this->path = "{$path}/{$this->provider}/{$this->mch}/";
         $this->fullPath = storage_path($this->path);
 
         // 获取本地缓存文件名
@@ -62,14 +62,14 @@ class CusConfig
      * @param string $provider
      * @return static
      */
-    public static function build($provider = "default", $id = 0) {
+    public static function build($provider = "default", $mch = 0) {
         if(!isset(self::$instance[$provider])) {
             self::$instance[$provider] = [];
         }
-        if(!isset(self::$instance[$provider][$id])) {
-            self::$instance[$provider][$id] = new static($provider, $id);
+        if(!isset(self::$instance[$provider][$mch])) {
+            self::$instance[$provider][$mch] = new static($provider, $mch);
         }
-        return self::$instance[$provider][$id];
+        return self::$instance[$provider][$mch];
     }
 
     /**
@@ -77,7 +77,7 @@ class CusConfig
      * @return string
      */
     protected function versionCacheKey() {
-        return config("config.cache.prefix", "h6play_cus_config") . "_{$this->provider}_{$this->id}";
+        return config("config.cache.prefix", "h6play_cus_config") . "_{$this->provider}_{$this->mch}";
     }
 
     /**
@@ -93,9 +93,24 @@ class CusConfig
      * @return string
      */
     protected function getRealFilePath() {
-        // 创建目录
-        !File::isDirectory($this->fullPath) && File::makeDirectory($this->fullPath);
         return storage_path("{$this->path}/{$this->file}");
+    }
+
+    /**
+     * 删除缓存目录
+     */
+    protected function delDirCache() {
+        // 创建目录
+        if(File::isDirectory($this->fullPath)) {
+            File::deleteDirectory($this->fullPath);
+        }
+    }
+
+    /**
+     * 添加缓存目录
+     */
+    protected function addDirCache() {
+        !File::isDirectory($this->fullPath) && File::makeDirectory($this->fullPath, 0777, true);
     }
 
     /**
@@ -119,10 +134,12 @@ class CusConfig
             {
                 $data = DB::table($this->tables['config'])
                     ->where("provider", $this->provider)
-                    ->where("id", $this->id)
+                    ->where("mch", $this->mch)
                     ->value("data");
                 // 同步缓存到本地
                 if(!is_null($data)) {
+                    $this->delDirCache();
+                    $this->addDirCache();
                     File::put($path, $data);
                 }
             } else {
@@ -143,12 +160,12 @@ class CusConfig
             // 保存到数据库
             $result = DB::table($this->tables['config'])
                 ->where("provider", $this->provider)
-                ->where("id", $this->id)
+                ->where("mch", $this->mch)
                 ->exists();
             if($result) {
                 $result = DB::table($this->tables['config'])
                     ->where("provider", $this->provider)
-                    ->where("id", $this->id)
+                    ->where("mch", $this->mch)
                     ->update([
                         "data" => $data,
                         "updated_at" => now(),
@@ -157,7 +174,7 @@ class CusConfig
                 $result = DB::table($this->tables['config'])
                     ->insert([
                         "provider" => $this->provider,
-                        "id" => $this->id,
+                        "mch" => $this->mch,
                         "data" => $data,
                         "updated_at" => now(),
                         "created_at" => now(),
@@ -170,6 +187,8 @@ class CusConfig
         }
 
         // 保存到本地缓存
+        $this->delDirCache();
+        $this->addDirCache();
         File::put($this->getRealFilePath(), $data);
     }
 
